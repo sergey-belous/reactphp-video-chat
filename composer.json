@@ -1,0 +1,18 @@
+{
+    "name": "sj/reactphp-video-chat",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "Sj\\ReactphpVideoChat\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Sergey Belous",
+            "email": "sergey.belous1990@gmail.com"
+        }
+    ],
+    "require": {
+        "cboden/ratchet": "^0.4.4"
+    }
+}
