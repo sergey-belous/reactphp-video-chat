@@ -135,6 +135,7 @@
             
             pc.onicecandidate = event => {
                 if (event.candidate) {
+                    console.log('candidate event', event, message);
                     socket.send(JSON.stringify({
                         type: 'candidate',
                         room: roomId,
@@ -142,6 +143,7 @@
                         data: event.candidate
                     }));
                 }
+                
             };
             
             pc.ontrack = event => {
