@@ -64,7 +64,10 @@
             console.log(message);
             switch (message.type) {
                 case 'user-joined':
-                    createPeerConnection(message.userId);
+                    // Не инициировать соединение с самим собой и не дублировать соединение
+                    if (message.userId !== userId && !peerConnections[message.userId]) {
+                        createPeerConnection(message.userId);
+                    }
                     break;
                     
                 case 'offer':
@@ -86,6 +89,7 @@
         }
 
         function createPeerConnection(targetUserId) {
+            if (peerConnections[targetUserId]) return; // Не создавать второй раз
             const pc = new RTCPeerConnection(config);
             peerConnections[targetUserId] = pc;
             
