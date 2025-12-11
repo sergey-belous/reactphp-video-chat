@@ -101,6 +101,7 @@
                         type: 'candidate',
                         room: roomId,
                         target: targetUserId,
+                        userId: userId,
                         data: event.candidate
                     }));
                 }
@@ -124,6 +125,7 @@
                         type: 'offer',
                         room: roomId,
                         target: targetUserId,
+                        userId: userId,
                         data: pc.localDescription
                     }));
                 });
@@ -140,6 +142,7 @@
                         type: 'candidate',
                         room: roomId,
                         target: message.sender,
+                        userId: userId,
                         data: event.candidate
                     }));
                 }
@@ -163,6 +166,7 @@
                         type: 'answer',
                         room: roomId,
                         target: message.sender,
+                        userId: userId,
                         data: pc.localDescription
                     }));
                 });
