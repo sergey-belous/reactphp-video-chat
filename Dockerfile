@@ -6,4 +6,4 @@ RUN docker-php-source extract \
     && docker-php-ext-enable ffi \
 	# do important things \
 	&& docker-php-source delete
-CMD [ "php", "/index.php" ]
+CMD [ "php", "index.php" ]
