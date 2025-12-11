@@ -110,13 +110,20 @@ $sslContext = [
     'verify_peer_name' => false                   // Отключить проверку имени
 ];
 
+$loop = Loop::get();
+
+$socket = new SocketServer('0.0.0.0:8080', [], $loop);
+// Закомментируем SSL-сервер — можно включить при наличии сертификатов
+// $socket = new SecureServer($socket, $loop, $sslContext);
+
 $server = new IoServer(
-        new HttpServer(
-            new WsServer(
-                new SignalingServer()
-            )
-        ),
-        new SecureServer(new SocketServer('0.0.0.0:8080'), null, $sslContext)
-    );
+    new HttpServer(
+        new WsServer(
+            new SignalingServer()
+        )
+    ),
+    $socket,
+    $loop
+);
 
 $server->run();
