@@ -33,13 +33,13 @@ class SignalingServer implements MessageComponentInterface {
         $userId = $data['userId'] ?? null;
 
         switch ($type) {
-            case 'join':
+            case 'join-request':
                 $this->rooms[$room][$userId] = $from;
                 // Отправить новому список других участников
                 $others = array_keys($this->rooms[$room]);
                 $others = array_filter($others, fn($id) => $id !== $userId);
                 $from->send(json_encode([
-                    'type' => 'peers',
+                    'type' => 'initial-peers',
                     'peers' => array_values($others)
                 ]));
                 // Сообщить остальным, что кто-то присоединился

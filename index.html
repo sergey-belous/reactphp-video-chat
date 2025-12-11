@@ -52,7 +52,7 @@
                 socket.onopen = () => {
                     console.log('Opened connection');
                     socket.send(JSON.stringify({
-                        type: 'join',
+                        type: 'join-request',
                         room: roomId,
                         userId: userId
                     }));
@@ -63,7 +63,7 @@
             const message = JSON.parse(event.data);
             console.log(message);
             switch (message.type) {
-                case 'peers':
+                case 'initial-peers':
                     message.peers.forEach(peerId => {
                         if (peerId !== userId && !peerConnections[peerId]) {
                             createPeerConnection(peerId);
@@ -71,8 +71,9 @@
                     });
                     break;
                 case 'user-joined':
+                    createPeerConnection(peerId);
                     // Здесь не должно быть подключения!
-                    alert(`${message.userId} joined the room`);
+                    // alert(`${message.userId} joined the room`);
                     // Можно отобразить info о новом участнике, но НЕ запускать createPeerConnection
                     break;
                     
@@ -142,6 +143,7 @@
         }
 
         function handleOffer(message) {
+            if (peerConnections[targetUserId]) return;
             const pc = new RTCPeerConnection(config);
             peerConnections[message.sender] = pc;
             
