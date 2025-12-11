@@ -63,13 +63,6 @@
             const message = JSON.parse(event.data);
             console.log(message);
             switch (message.type) {
-                case 'user-joined':
-                    message.peers.forEach(peerId => {
-                        if (peerId !== userId && !peerConnections[peerId]) {
-                            createPeerConnection(peerId);
-                        }
-                    });
-                    break;
                 case 'peers':
                     message.peers.forEach(peerId => {
                         if (peerId !== userId && !peerConnections[peerId]) {
@@ -77,6 +70,9 @@
                         }
                     });
                     break;
+                case 'user-joined':
+                    // Здесь не должно быть подключения!
+                    alert(`${message.userId} joined the room`);
                     // Можно отобразить info о новом участнике, но НЕ запускать createPeerConnection
                     break;
                     
