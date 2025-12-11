@@ -112,9 +112,9 @@ $sslContext = [
 
 $loop = Loop::get();
 
-$socket = new SocketServer('0.0.0.0:8080', [], $loop);
+// $socket = new SocketServer('0.0.0.0:8080', , $loop);
 // Закомментируем SSL-сервер — можно включить при наличии сертификатов
-// $socket = new SecureServer($socket, $loop, $sslContext);
+$socket = new SecureServer($socket, $loop, $sslContext);
 
 $server = new IoServer(
     new HttpServer(
