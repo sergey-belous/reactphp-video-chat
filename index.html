@@ -63,11 +63,15 @@
             const message = JSON.parse(event.data);
             console.log(message);
             switch (message.type) {
+                case 'peers':
+                    message.peers.forEach(peerId => {
+                        if (peerId !== userId && !peerConnections[peerId]) {
+                            createPeerConnection(peerId);
+                        }
+                    });
+                    break;
                 case 'user-joined':
-                    // Не инициировать соединение с самим собой и не дублировать соединение
-                    if (message.userId !== userId && !peerConnections[message.userId]) {
-                        createPeerConnection(message.userId);
-                    }
+                    // Можно отобразить info о новом участнике, но НЕ запускать createPeerConnection
                     break;
                     
                 case 'offer':

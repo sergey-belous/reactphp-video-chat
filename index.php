@@ -35,6 +35,14 @@ class SignalingServer implements MessageComponentInterface {
         switch ($type) {
             case 'join':
                 $this->rooms[$room][$userId] = $from;
+                // Отправить новому список других участников
+                $others = array_keys($this->rooms[$room]);
+                $others = array_filter($others, fn($id) => $id !== $userId);
+                $from->send(json_encode([
+                    'type' => 'peers',
+                    'peers' => array_values($others)
+                ]));
+                // Сообщить остальным, что кто-то присоединился
                 $this->broadcast($room, [
                     'type' => 'user-joined',
                     'userId' => $userId
