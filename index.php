@@ -5,10 +5,11 @@ require __DIR__.'/vendor/autoload.php';
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 use Ratchet\WebSocket\WsServer;
-use React\EventLoop\Factory;
-use React\Socket\Server as Reactor;
+use React\Socket\SecureServer;
 use Ratchet\Server\IoServer;
 use Ratchet\Http\HttpServer;
+use React\Socket\SocketServer;
+use React\EventLoop\Loop;
 
 class SignalingServer implements MessageComponentInterface {
     protected $clients;
@@ -101,13 +102,21 @@ class SignalingServer implements MessageComponentInterface {
     }
 }
 
-$server = IoServer::factory(
+$sslContext = [
+    'local_cert' => __DIR__ . '/ssl/cert.pem',     // Путь к SSL сертификату
+    'local_pk' => __DIR__ . '/ssl/privkey.pem',   // Путь к приватному ключу
+    'allow_self_signed' => true,                  // Разрешить самоподписанные сертификаты
+    'verify_peer' => false,                       // Отключить проверку peer (для разработки)
+    'verify_peer_name' => false                   // Отключить проверку имени
+];
+
+$server = new IoServer(
         new HttpServer(
             new WsServer(
                 new SignalingServer()
             )
         ),
-        8080
+        new SecureServer(new SocketServer('0.0.0.0:8080'), null, $sslContext)
     );
 
 $server->run();

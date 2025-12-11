@@ -22,7 +22,7 @@
 
     <script>
         const config = {
-            iceServers: [{ urls: 'stun:176.98.176.46:3478' }]
+            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
         };
         const peerConnections = {};
         let localStream;
@@ -45,7 +45,7 @@
                 document.getElementById('videos').appendChild(localVideo);
                 
                 // Connect to signaling server
-                socket = new WebSocket('ws://176.98.176.46:8080');
+                socket = new WebSocket('wss://wh40kmodels.ru:8080');
                 socket.onmessage = handleMessage;
                 
                 // Join the room
