@@ -71,7 +71,12 @@
                     });
                     break;
                 case 'peers':
-                    createPeerConnection(peerId);
+                    message.peers.forEach(peerId => {
+                        if (peerId !== userId && !peerConnections[peerId]) {
+                            createPeerConnection(peerId);
+                        }
+                    });
+                    break;
                     // Можно отобразить info о новом участнике, но НЕ запускать createPeerConnection
                     break;
                     
