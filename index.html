@@ -96,6 +96,7 @@
         }
 
         function createPeerConnection(targetUserId) {
+            console.log('createPeerConnection', targetUserId);
             let pc;
             if (peerConnections[targetUserId]) {
                 pc = peerConnections[targetUserId]; // Не создавать второй раз
@@ -146,6 +147,7 @@
         }
 
         function handleOffer(message) {
+            console.log('handleOffer', message);
             let pc;
             if (peerConnections[message.sender]) {
                 pc = peerConnections[message.sender]; // Не создавать второй раз
