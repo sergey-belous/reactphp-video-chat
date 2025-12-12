@@ -71,7 +71,7 @@
                     });
                     break;
                 case 'user-joined':
-                    createPeerConnection(peerId);
+                    createPeerConnection(message.userId);
                     // Здесь не должно быть подключения!
                     // alert(`${message.userId} joined the room`);
                     // Можно отобразить info о новом участнике, но НЕ запускать createPeerConnection
@@ -117,7 +117,7 @@
                 localStream.getTracks().forEach(track => {
                     pc.addTrack(track, localStream);
                 });
-                
+
                 // Handle remote stream
                 pc.ontrack = event => {
                     console.log('video event', event);
@@ -150,8 +150,8 @@
 
         function handleOffer(message) {
             let pc;
-            if (peerConnections[targetUserId]) {
-                pc = peerConnections[targetUserId]; // Не создавать второй раз
+            if (peerConnections[message.sender]) {
+                pc = peerConnections[message.sender]; // Не создавать второй раз
             } else {
                 pc = new RTCPeerConnection(config);
 
