@@ -45,7 +45,7 @@
             userVideoElems[userId] = localVideo;
 
             // WebSocket connect
-            socket = new WebSocket('wss://'+window.location.hostname+':8080');
+            socket = new WebSocket('wss://'+window.location.hostname+'/ws');
             socket.onmessage = handleMessage;
             socket.onopen = () => {
                 socket.send(JSON.stringify({
