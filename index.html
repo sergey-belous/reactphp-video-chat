@@ -102,18 +102,6 @@
             } else {
                 pc = new RTCPeerConnection(config);
 
-                pc.onicecandidate = event => {
-                    if (event.candidate) {
-                        socket.send(JSON.stringify({
-                            type: 'candidate',
-                            room: roomId,
-                            target: targetUserId,
-                            userId: userId,
-                            data: event.candidate
-                        }));
-                    }
-                };
-
                 localStream.getTracks().forEach(track => {
                     pc.addTrack(track, localStream);
                 });
@@ -131,8 +119,17 @@
             
             peerConnections[targetUserId] = pc;
             
-            // Add local stream
-            
+            pc.onicecandidate = event => {
+                if (event.candidate) {
+                    socket.send(JSON.stringify({
+                        type: 'candidate',
+                        room: roomId,
+                        target: targetUserId,
+                        userId: userId,
+                        data: event.candidate
+                    }));
+                }
+            };
             
             // Create offer
             pc.createOffer()
@@ -155,19 +152,6 @@
             } else {
                 pc = new RTCPeerConnection(config);
 
-                pc.onicecandidate = event => {
-                    if (event.candidate) {
-                        console.log('candidate event', event, message);
-                        socket.send(JSON.stringify({
-                            type: 'candidate',
-                            room: roomId,
-                            target: message.sender,
-                            userId: userId,
-                            data: event.candidate
-                        }));
-                    }
-                };
-
                 pc.ontrack = event => {
                     console.log('offer event', event, message);
                     const remoteVideo = document.createElement('video');
@@ -180,6 +164,19 @@
             
             peerConnections[message.sender] = pc;
             
+            pc.onicecandidate = event => {
+                if (event.candidate) {
+                    console.log('candidate event', event, message);
+                    socket.send(JSON.stringify({
+                        type: 'candidate',
+                        room: roomId,
+                        target: message.sender,
+                        userId: userId,
+                        data: event.candidate
+                    }));
+                }
+            };
+
             pc.setRemoteDescription(new RTCSessionDescription(message.data))
                 .then(() => pc.createAnswer())
                 .then(answer => pc.setLocalDescription(answer))
