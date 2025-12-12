@@ -17,208 +17,149 @@
     </style>
 </head>
 <body>
-    chromium-browser --unsafely-treat-insecure-origin-as-secure="http://176.98.176.46" --user-data-dir=/tmp/example
     <div id="videos"></div>
 
     <script>
         const config = {
             iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
         };
-        const peerConnections = {};
+        const peerConnections = {}; // userId -> RTCPeerConnection
         let localStream;
         let socket;
         let roomId = 'room1';
         let userId = Math.random().toString(36).substring(2, 10);
+        const userVideoElems = {}; // userId -> videoElem
 
         async function init() {
-                // Get local media stream
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: true
-                });
-                
-                // Create local video element
-                const localVideo = document.createElement('video');
-                localVideo.muted = true;
-                localVideo.autoplay = true;
-                localVideo.srcObject = localStream;
-                document.getElementById('videos').appendChild(localVideo);
-                
-                // Connect to signaling server
-                socket = new WebSocket('wss://176.98.176.46/ws/');
-                socket.onmessage = handleMessage;
-                
-                // Join the room
-                socket.onopen = () => {
-                    console.log('Opened connection');
-                    socket.send(JSON.stringify({
-                        type: 'join-request',
-                        room: roomId,
-                        userId: userId
-                    }));
-                }
+            localStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true
+            });
+            const videosDiv = document.getElementById('videos');
+            // Add local video
+            const localVideo = document.createElement('video');
+            localVideo.autoplay = true;
+            localVideo.muted = true;
+            localVideo.srcObject = localStream;
+            videosDiv.appendChild(localVideo);
+            userVideoElems[userId] = localVideo;
+
+            // WebSocket connect
+            socket = new WebSocket('wss://'+window.location.hostname+':8080');
+            socket.onmessage = handleMessage;
+            socket.onopen = () => {
+                socket.send(JSON.stringify({
+                    type: 'join-request',
+                    room: roomId,
+                    userId: userId
+                }));
+            };
+            socket.onclose = () => { alert('Connection lost'); };
         }
 
-        function handleMessage(event) {
-            const message = JSON.parse(event.data);
-            console.log(message);
-            switch (message.type) {
+        window.onload = init;
+
+        function handleMessage(msg) {
+            const data = JSON.parse(msg.data);
+            switch (data.type) {
                 case 'initial-peers':
-                    message.peers.forEach(peerId => {
-                        if (peerId !== userId && !peerConnections[peerId]) {
-                            createPeerConnection(peerId);
-                        }
+                    data.peers.forEach(remoteId => {
+                        createPeer(remoteId, true);
                     });
                     break;
                 case 'user-joined':
-                    createPeerConnection(message.userId);
-                    // Здесь не должно быть подключения!
-                    // alert(`${message.userId} joined the room`);
-                    // Можно отобразить info о новом участнике, но НЕ запускать createPeerConnection
+                    createPeer(data.userId, false);
                     break;
-                    
-                case 'offer':
-                    handleOffer(message);
-                    break;
-                    
-                case 'answer':
-                    handleAnswer(message);
-                    break;
-                    
-                case 'candidate':
-                    handleCandidate(message);
-                    break;
-                    
                 case 'user-left':
-                    removeVideo(message.userId);
+                    closePeer(data.userId);
+                    break;
+                case 'signal':
+                    handleSignal(data.from, data.data);
                     break;
             }
         }
 
-        function createPeerConnection(targetUserId) {
-            console.log('createPeerConnection', targetUserId);
-            let pc;
-            if (peerConnections[targetUserId]) {
-                pc = peerConnections[targetUserId]; // Не создавать второй раз
-            } else {
-                pc = new RTCPeerConnection(config);
+        function createPeer(remoteId, isInitiator) {
+            if (peerConnections[remoteId]) return; // already exists
+            const pc = new RTCPeerConnection(config);
+            localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
-                localStream.getTracks().forEach(track => {
-                    pc.addTrack(track, localStream);
+            pc.ontrack = e => {
+                if (!userVideoElems[remoteId]) {
+                    const v = document.createElement('video');
+                    v.autoplay = true;
+                    v.srcObject = new MediaStream();
+                    userVideoElems[remoteId] = v;
+                    document.getElementById('videos').appendChild(v);
+                }
+                e.streams[0].getTracks().forEach(track => {
+                    userVideoElems[remoteId].srcObject.addTrack(track);
                 });
-
-                // Handle remote stream
-                pc.ontrack = event => {
-                    console.log('video event', event);
-                    const remoteVideo = document.createElement('video');
-                    remoteVideo.id = `video-${targetUserId}`;
-                    remoteVideo.autoplay = true;
-                    remoteVideo.srcObject = event.streams[0];
-                    document.getElementById('videos').appendChild(remoteVideo);
-                };
-            }
-            
-            peerConnections[targetUserId] = pc;
-            
-            pc.onicecandidate = event => {
-                if (event.candidate) {
+            };
+            pc.onicecandidate = e => {
+                if (e.candidate) {
                     socket.send(JSON.stringify({
-                        type: 'candidate',
+                        type: 'signal',
                         room: roomId,
-                        target: targetUserId,
                         userId: userId,
-                        data: event.candidate
+                        to: remoteId,
+                        data: { type: 'ice', candidate: e.candidate }
                     }));
                 }
             };
-            
-            // Create offer
-            pc.createOffer()
-                .then(offer => pc.setLocalDescription(offer))
-                .then(() => {
+            peerConnections[remoteId] = pc;
+
+            if (isInitiator) {
+                pc.onnegotiationneeded = async () => {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
                     socket.send(JSON.stringify({
-                        type: 'offer',
+                        type: 'signal',
                         room: roomId,
-                        target: targetUserId,
                         userId: userId,
-                        data: pc.localDescription
+                        to: remoteId,
+                        data: { type: 'offer', sdp: offer }
                     }));
-                });
-        }
-
-        function handleOffer(message) {
-            console.log('handleOffer', message);
-            let pc;
-            if (peerConnections[message.sender]) {
-                pc = peerConnections[message.sender]; // Не создавать второй раз
-            } else {
-                pc = new RTCPeerConnection(config);
-
-                pc.ontrack = event => {
-                    console.log('offer event', event, message);
-                    const remoteVideo = document.createElement('video');
-                    remoteVideo.id = `video-${message.sender}`;
-                    remoteVideo.autoplay = true;
-                    remoteVideo.srcObject = event.streams[0];
-                    document.getElementById('videos').appendChild(remoteVideo);
                 };
-            };
-            
-            peerConnections[message.sender] = pc;
-            
-            pc.onicecandidate = event => {
-                if (event.candidate) {
-                    console.log('candidate event', event, message);
-                    socket.send(JSON.stringify({
-                        type: 'candidate',
-                        room: roomId,
-                        target: message.sender,
-                        userId: userId,
-                        data: event.candidate
-                    }));
-                }
-            };
-
-            pc.setRemoteDescription(new RTCSessionDescription(message.data))
-                .then(() => pc.createAnswer())
-                .then(answer => pc.setLocalDescription(answer))
-                .then(() => {
-                    socket.send(JSON.stringify({
-                        type: 'answer',
-                        room: roomId,
-                        target: message.sender,
-                        userId: userId,
-                        data: pc.localDescription
-                    }));
-                });
-        }
-
-        function handleAnswer(message) {
-            const pc = peerConnections[message.sender];
-            if (pc) {
-                pc.setRemoteDescription(new RTCSessionDescription(message.data));
             }
         }
 
-        function handleCandidate(message) {
-            const pc = peerConnections[message.sender];
-            if (pc) {
-                pc.addIceCandidate(new RTCIceCandidate(message.data));
+        async function handleSignal(fromId, signal) {
+            let pc = peerConnections[fromId];
+            if (!pc) {
+                createPeer(fromId, false);
+                pc = peerConnections[fromId];
+            }
+            if (signal.type === 'offer') {
+                await pc.setRemoteDescription(signal.sdp);
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                socket.send(JSON.stringify({
+                    type: 'signal',
+                    room: roomId,
+                    userId: userId,
+                    to: fromId,
+                    data: { type: 'answer', sdp: answer }
+                }));
+            } else if (signal.type === 'answer') {
+                await pc.setRemoteDescription(signal.sdp);
+            } else if (signal.type === 'ice') {
+                try {
+                    await pc.addIceCandidate(signal.candidate);
+                } catch (e) { }
             }
         }
 
-        function removeVideo(userId) {
-            const video = document.getElementById(`video-${userId}`);
-            if (video) video.remove();
-            
-            if (peerConnections[userId]) {
-                peerConnections[userId].close();
-                delete peerConnections[userId];
+        function closePeer(remoteId) {
+            if (peerConnections[remoteId]) {
+                peerConnections[remoteId].close();
+                delete peerConnections[remoteId];
+            }
+            if (userVideoElems[remoteId]) {
+                userVideoElems[remoteId].remove();
+                delete userVideoElems[remoteId];
             }
         }
-
-        // Start on page load
-        window.onload = init;
     </script>
 </body>
 </html>

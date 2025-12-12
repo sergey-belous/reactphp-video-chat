@@ -49,25 +49,23 @@ class SignalingServer implements MessageComponentInterface {
                 ], $from);
                 break;
 
-            case 'offer':
-            case 'answer':
-            case 'candidate':
-                $target = $data['target'];
-                if (isset($this->rooms[$room][$target])) {
-                    $this->sendTo($this->rooms[$room][$target], [
-                        'type' => $type,
-                        'sender' => $userId,
-                        'data' => $data['data']
-                    ]);
-                }
-                break;
-
             case 'leave':
                 unset($this->rooms[$room][$userId]);
                 $this->broadcast($room, [
                     'type' => 'user-left',
                     'userId' => $userId
                 ]);
+                break;
+
+            case 'signal':
+                $to = $data['to'] ?? null;
+                if ($to && isset($this->rooms[$room][$to])) {
+                    $this->rooms[$room][$to]->send(json_encode([
+                        'type' => 'signal',
+                        'from' => $userId,
+                        'data' => $data['data']
+                    ]));
+                }
                 break;
         }
     }
