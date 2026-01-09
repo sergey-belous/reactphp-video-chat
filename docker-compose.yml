@@ -1,8 +1,6 @@
 version: "3.7"
 
 services:
-
-
   php8.5-cli:
     image: php:8.5.0RC3-cli-alpine3.21
     container_name: php-video

@@ -26,9 +26,12 @@
         const peerConnections = {}; // userId -> RTCPeerConnection
         let localStream;
         let socket;
+        let wsUrl;
         let roomId = 'room1';
         let userId = Math.random().toString(36).substring(2, 10);
         const userVideoElems = {}; // userId -> videoElem
+        let reconnectAttempts = 0;
+        let reconnectTimer = null;
 
         async function init() {
             localStream = await navigator.mediaDevices.getUserMedia({
@@ -44,21 +47,49 @@
             videosDiv.appendChild(localVideo);
             userVideoElems[userId] = localVideo;
 
-            // WebSocket connect
-            socket = new WebSocket('wss://'+window.location.hostname+'/ws/');
-            // socket = new WebSocket('wss://176.98.176.46/ws/');
+            // WebSocket connect: use secure path in prod, ws://localhost:8080 for local
+            const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            const isHttps = location.protocol === 'https:';
+            wsUrl = isHttps && !isLocal
+                ? 'wss://' + window.location.hostname + '/ws/'
+                : 'ws://localhost:8080';
+            connectSocket();
+        }
+
+        window.onload = init;
+
+        function connectSocket() {
+            if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+                return; // already connecting/open
+            }
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+            socket = new WebSocket(wsUrl);
             socket.onmessage = handleMessage;
             socket.onopen = () => {
+                reconnectAttempts = 0;
                 socket.send(JSON.stringify({
                     type: 'join-request',
                     room: roomId,
                     userId: userId
                 }));
             };
-            socket.onclose = () => { alert('Connection lost'); };
+            socket.onerror = () => {
+                socket.close();
+            };
+            socket.onclose = () => {
+                scheduleReconnect();
+            };
         }
 
-        window.onload = init;
+        function scheduleReconnect() {
+            if (reconnectTimer) return;
+            const delay = Math.min(30000, 2000 * Math.pow(2, reconnectAttempts || 0));
+            reconnectAttempts++;
+            reconnectTimer = setTimeout(() => {
+                connectSocket();
+            }, delay);
+        }
 
         function handleMessage(msg) {
             const data = JSON.parse(msg.data);
